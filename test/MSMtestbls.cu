@@ -111,7 +111,7 @@ void instance_init_host(h_instance_params* ip)
     ip->h_gt_instance = bls12_381_GT_host(&bls12_381_fp12_params_q_host);
 }
 // Print memory usage statistics
-void gpu_mem_status()
+int gpu_mem_status()
 {
     size_t free_byte;
     size_t total_byte;
