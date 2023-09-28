@@ -302,10 +302,10 @@ int main(int argc, char* argv[])
     int deviceCount;
     cudaGetDeviceCount( &deviceCount );
     CUTThread  thread[deviceCount];
-    print("LOG: Number of devices: %d\n",deviceCount);
-    print("LOG: Starting to init public params\n");
+    printf("LOG: Number of devices: %d\n",deviceCount);
+    printf("LOG: Starting to init public params\n");
     bls12_381_pp_host::init_public_params();
-    print("LOG: Done init public params\n");
+    printf("LOG: Done init public params\n");
     cudaSetDevice(0);
     
     size_t num_v = (size_t) (1 << log_size);
@@ -340,7 +340,7 @@ int main(int argc, char* argv[])
     h_instance_params hip;
     instance_init_host(&hip);
 
-    printf("Log: Generating elements\n")
+    printf("Log: Generating elements\n");
     // elements generation
     MSM_params<bls12_381_pp>* mp[deviceCount];
     for(size_t i=0; i<deviceCount; i++)
@@ -349,7 +349,7 @@ int main(int argc, char* argv[])
         if( cudaMalloc( (void**)&mp[i], sizeof(MSM_params<bls12_381_pp>)) != cudaSuccess) printf("mp malloc error!\n");
         generate_MP<bls12_381_pp><<<1, 1>>>(mp[i], ip[i], num_v);
     }
-    printf("LOG: Done Generating elements\n")
+    printf("LOG: Done Generating elements\n");
     for(size_t i=0; i<deviceCount; i++)
     {
         cudaSetDevice(i);
