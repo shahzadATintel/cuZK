@@ -10,28 +10,6 @@ typedef void *(*CUT_THREADROUTINE)(void *);
 
 #define CUT_THREADPROC void
 #define  CUT_THREADEND
-
-// Print memory usage statistics
-void gpu_mem_status()
-{
-    size_t free_byte;
-    size_t total_byte;
-
-    cudaError_t cuda_status = cudaMemGetInfo(&free_byte, &total_byte);
-
-    if (cudaSuccess != cuda_status) {
-        std::cerr << "Error: cudaMemGetInfo fails, " << cudaGetErrorString(cuda_status) << std::endl;
-        return 1;
-    }
-
-    double free_db = (double)free_byte;
-    double total_db = (double)total_byte;
-    double used_db = total_db - free_db;
-
-    std::cout << "GPU memory usage: used = " << used_db / 1024.0 / 1024.0 << " MB, free = " << free_db / 1024.0 / 1024.0 << " MB, total = " << total_db / 1024.0 / 1024.0 << " MB" << std::endl;
-
-}
-
 //Create thread
 CUTThread start_thread(CUT_THREADROUTINE func, void * data){
     pthread_t thread;
@@ -132,7 +110,26 @@ void instance_init_host(h_instance_params* ip)
     ip->h_g2_instance = bls12_381_G2_host(&g2_params_host);
     ip->h_gt_instance = bls12_381_GT_host(&bls12_381_fp12_params_q_host);
 }
+// Print memory usage statistics
+void gpu_mem_status()
+{
+    size_t free_byte;
+    size_t total_byte;
 
+    cudaError_t cuda_status = cudaMemGetInfo(&free_byte, &total_byte);
+
+    if (cudaSuccess != cuda_status) {
+        std::cerr << "Error: cudaMemGetInfo fails, " << cudaGetErrorString(cuda_status) << std::endl;
+        return 1;
+    }
+
+    double free_db = (double)free_byte;
+    double total_db = (double)total_byte;
+    double used_db = total_db - free_db;
+
+    std::cout << "GPU memory usage: used = " << used_db / 1024.0 / 1024.0 << " MB, free = " << free_db / 1024.0 / 1024.0 << " MB, total = " << total_db / 1024.0 / 1024.0 << " MB" << std::endl;
+
+}
 
 template<typename ppT>
 __global__ void generate_MP(MSM_params<ppT>* mp, instance_params* ip, size_t size)
@@ -177,6 +174,7 @@ void* multi_init_params(void* params)
 {
     Mem* device_mem = (Mem*) params;
     cudaSetDevice(device_mem->device_id);
+    gpu_mem_status();
     printf("LOG: Starting to allocating memory for Parameters ....\n");
     size_t init_size = 1024 * 1024 * 1024;
     init_size *= 12;
@@ -304,12 +302,14 @@ int main(int argc, char* argv[])
     int deviceCount;
     cudaGetDeviceCount( &deviceCount );
     CUTThread  thread[deviceCount];
-
+    print("LOG: Number of devices: %d\n",deviceCount);
+    print("LOG: Starting to init public params\n");
     bls12_381_pp_host::init_public_params();
+    print("LOG: Done init public params\n");
     cudaSetDevice(0);
-
+    
     size_t num_v = (size_t) (1 << log_size);
-
+    
     // params init 
     Mem device_mem[deviceCount];
     for(size_t i=0; i<deviceCount; i++)
@@ -340,6 +340,7 @@ int main(int argc, char* argv[])
     h_instance_params hip;
     instance_init_host(&hip);
 
+    printf("Log: Generating elements\n")
     // elements generation
     MSM_params<bls12_381_pp>* mp[deviceCount];
     for(size_t i=0; i<deviceCount; i++)
@@ -348,6 +349,7 @@ int main(int argc, char* argv[])
         if( cudaMalloc( (void**)&mp[i], sizeof(MSM_params<bls12_381_pp>)) != cudaSuccess) printf("mp malloc error!\n");
         generate_MP<bls12_381_pp><<<1, 1>>>(mp[i], ip[i], num_v);
     }
+    printf("LOG: Done Generating elements\n")
     for(size_t i=0; i<deviceCount; i++)
     {
         cudaSetDevice(i);
