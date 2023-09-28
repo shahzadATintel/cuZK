@@ -3,11 +3,34 @@ struct h_instance_params;
 
 #include <pthread.h>
 
+#include <cuda_runtime.h>
+
 typedef pthread_t CUTThread;
 typedef void *(*CUT_THREADROUTINE)(void *);
 
 #define CUT_THREADPROC void
 #define  CUT_THREADEND
+
+// Print memory usage statistics
+void gpu_mem_status()
+{
+    size_t free_byte;
+    size_t total_byte;
+
+    cudaError_t cuda_status = cudaMemGetInfo(&free_byte, &total_byte);
+
+    if (cudaSuccess != cuda_status) {
+        std::cerr << "Error: cudaMemGetInfo fails, " << cudaGetErrorString(cuda_status) << std::endl;
+        return 1;
+    }
+
+    double free_db = (double)free_byte;
+    double total_db = (double)total_byte;
+    double used_db = total_db - free_db;
+
+    std::cout << "GPU memory usage: used = " << used_db / 1024.0 / 1024.0 << " MB, free = " << free_db / 1024.0 / 1024.0 << " MB, total = " << total_db / 1024.0 / 1024.0 << " MB" << std::endl;
+
+}
 
 //Create thread
 CUTThread start_thread(CUT_THREADROUTINE func, void * data){
@@ -154,9 +177,11 @@ void* multi_init_params(void* params)
 {
     Mem* device_mem = (Mem*) params;
     cudaSetDevice(device_mem->device_id);
+    printf("LOG: Starting to allocating memory for Parameters ....\n");
     size_t init_size = 1024 * 1024 * 1024;
-    init_size *= 20;
+    init_size *= 12;
     if( cudaMalloc( (void**)&device_mem->mem, init_size ) != cudaSuccess) printf("device malloc error!\n");
+    printf("LOG: Done to allocating memory for Parameters ....\n");
     libstl::initAllocator(device_mem->mem, init_size);
     init_params<<<1, 1>>>();
     cudaDeviceSynchronize();
